@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id           String        @id @default(cuid())
+  name         String
+  measurements Measurement[]
+}
+
+model Measurement {
+  id                   String          @id @default(cuid())
+  customer_id          String
+  customer             Customer        @relation(fields: [customer_id], references: [id])
+  measurement_datetime DateTime
+  measurement_type     MeasurementType
+  measurement_value    Float
+  has_confirmed        Boolean         @default(false)
+  image_link           String
+  created_at           DateTime        @default(now())
+  updated_at           DateTime        @updatedAt
+
+  @@unique([customer_id, measurement_type, measurement_datetime], name: "unique_measurement_type_and_date")
+  @@index([measurement_datetime], name: "index_measurement_date")
+  @@index([measurement_type], name: "index_measurement_type")
+  @@index([customer_id], name: "index_measurement_customer")
+}
+
+enum MeasurementType {
+  WATER
+  GAS
+}
