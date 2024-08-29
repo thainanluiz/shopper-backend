@@ -1,0 +1,132 @@
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { UploadMeasurementDTO } from "src/dto/measurement/upload.dto";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { PrismaService } from "../prisma/prisma.service";
+import { FirebaseService } from "../firebase/firebase.service";
+import { Measurement, MeasurementType } from "@prisma/client";
+
+@Injectable()
+export class MeasurementService {
+	private generativeAI: GoogleGenerativeAI;
+
+	constructor(
+		private prismaService: PrismaService,
+		private firebaseService: FirebaseService,
+	) {
+		this.generativeAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+	}
+
+	async uploadMeasurement(uploadMeasurementDto: UploadMeasurementDTO): Promise<{
+		image_url: string;
+		measure_value: number;
+		measure_uuid: string;
+	}> {
+		const { image, customer_code, measure_datetime, measure_type } =
+			uploadMeasurementDto;
+
+		const current_date = new Date(measure_datetime);
+
+		try {
+			const fileUrl = await this.firebaseService.uploadFile(
+				Buffer.from(image, "base64"),
+				`measurements/${customer_code}/${measure_type + current_date.toISOString()}.jpg`,
+			);
+
+			const model = this.generativeAI.getGenerativeModel({
+				model: "gemini-1.5-flash",
+			});
+
+			const geminiPrompt = `
+				Analise a imagem do medidor e retorne o valor medido. 
+				Se a leitura não for possível, retorne 'UNREADABLE_MEASUREMENT'.
+				Somente números válidos serão considerados.
+			`;
+
+			const geminiImage = {
+				inlineData: {
+					data: image,
+					mimeType: "image/jpeg",
+				},
+			};
+
+			const result = await model.generateContent([geminiPrompt, geminiImage]);
+
+			const responseText = result.response.text().trim();
+
+			if (
+				responseText.includes("UNREADABLE_MEASUREMENT") ||
+				!responseText.match(/\d+/)
+			) {
+				throw new HttpException(
+					{
+						error_code: "UNREADABLE_MEASUREMENT",
+						error_description: "The measurement could not be read",
+					},
+					HttpStatus.BAD_REQUEST,
+				);
+			}
+
+			const measureValue = Number.parseFloat(responseText.match(/\d+/)[0]);
+
+			const customer = await this.prismaService.customer.findUnique({
+				where: {
+					id: customer_code,
+				},
+			});
+
+			if (!customer) {
+				throw new HttpException(
+					{
+						error_code: "CUSTOMER_NOT_FOUND",
+						error_description: `Customer with code ${customer_code} not found`,
+					},
+					HttpStatus.NOT_FOUND,
+				);
+			}
+
+			const measurement: Measurement =
+				await this.prismaService.measurement.create({
+					data: {
+						customer: {
+							connect: {
+								id: customer.id,
+							},
+						},
+						measurement_datetime: current_date,
+						measurement_value: measureValue,
+						measurement_type: measure_type as MeasurementType,
+						image_link: fileUrl[0],
+					},
+				});
+
+			return {
+				image_url: fileUrl[0],
+				measure_value: measureValue,
+				measure_uuid: measurement.id,
+			};
+		} catch (error) {
+			if (error instanceof HttpException) {
+				throw error;
+			}
+
+			if (error.code === "P2002" && error.meta.modelName === "Measurement") {
+				throw new HttpException(
+					{
+						error_code: "DOUBLE_REPORT",
+						error_description: "Monthly measurement already reported",
+					},
+					HttpStatus.CONFLICT,
+				);
+			}
+
+			throw new HttpException(
+				{
+					error_code: "INTERNAL_SERVER_ERROR",
+					error_description:
+						"An error occurred while processing the measurement",
+				},
+				HttpStatus.INTERNAL_SERVER_ERROR,
+			);
+		}
+	}
+}
