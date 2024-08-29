@@ -17,6 +17,7 @@ Este projeto de teste técnico é destinado ao gerenciamento de dados de mediç�
 - **Google Generative AI**: Ferramenta para análise e extração de valores de medições a partir de imagens.
 - **Prisma**: ORM para gerenciamento e consulta de banco de dados PostgreSQL.
 - **Express**: Middleware para processamento de dados JSON e URL-encoded.
+- **Git Flow**: Utilização de branches de develop, feature, release e hotfix para controle de versão.
 
 ## Configuração
 
