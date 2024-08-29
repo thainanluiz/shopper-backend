@@ -1,4 +1,4 @@
-import { Body, Controller, HttpException, HttpStatus, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpException, HttpStatus, Param, Patch, Post, Query } from "@nestjs/common";
 import { ConfirmMeasurementDTO } from "src/dto/measurement/confirm.dto";
 import { UploadMeasurementDTO } from "src/dto/measurement/upload.dto";
 import { MeasurementService } from "src/service/measurement/measurement.service";
@@ -30,6 +30,28 @@ export class MeasurementController {
     async confirmMeasurement(@Body() confirmMeasurementDto: ConfirmMeasurementDTO) {
         try {
             return await this.measurementService.confirmMeasurement(confirmMeasurementDto);
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+
+            throw new HttpException(
+                {
+                    error_code: "INTERNAL_SERVER_ERROR",
+                    error_description: "An unexpected error occurred.",
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+
+    @Get(':customer_code/list')
+    async listMeasurements(
+        @Param('customer_code') customerCode: string,
+        @Query('measure_type') measureType?: string,
+    ) {
+        try {
+            return await this.measurementService.listMeasurements(customerCode, measureType);
         } catch (error) {
             if (error instanceof HttpException) {
                 throw error;

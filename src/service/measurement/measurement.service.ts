@@ -174,4 +174,61 @@ export class MeasurementService {
 			success: true,
 		};
 	}
+
+	async listMeasurements(customerCode: string, measureType?: string) {
+		const customer = await this.prismaService.customer.findUnique({
+			where: {
+				id: customerCode,
+			},
+		});
+
+		if (!customer) {
+			throw new HttpException(
+				{
+					error_code: "CUSTOMER_NOT_FOUND",
+					error_description: `Customer with code ${customerCode} not found`,
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+
+		if (measureType && !["GAS", "WATER"].includes(measureType)) {
+			throw new HttpException(
+				{
+					error_code: "INVALID_TYPE",
+					error_description: `Invalid measurement type ${measureType}`,
+				},
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+
+		const measurements = await this.prismaService.measurement.findMany({
+			where: {
+				customer_id: customer.id,
+				...(measureType && {
+					measurement_type: measureType as MeasurementType,
+				}),
+			},
+			select: {
+				id: true,
+				measurement_datetime: true,
+				measurement_value: true,
+				measurement_type: true,
+				has_confirmed: true,
+				image_link: true,
+			},
+		});
+
+		return {
+			customer_code: customerCode,
+			measures: measurements.map((m) => ({
+				measure_uuid: m.id,
+				measure_datetime: m.measurement_datetime,
+				measure_type: m.measurement_type,
+				measure_value: m.measurement_value,
+				has_confirmed: m.has_confirmed,
+				image_url: m.image_link,
+			})),
+		};
+	}
 }
