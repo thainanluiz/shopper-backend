@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PrismaService } from "../prisma/prisma.service";
 import { FirebaseService } from "../firebase/firebase.service";
 import { Measurement, MeasurementType } from "@prisma/client";
+import { ConfirmMeasurementDTO } from "src/dto/measurement/confirm.dto";
 
 @Injectable()
 export class MeasurementService {
@@ -128,5 +129,49 @@ export class MeasurementService {
 				HttpStatus.INTERNAL_SERVER_ERROR,
 			);
 		}
+	}
+
+	async confirmMeasurement(confirmMeasurementDto: ConfirmMeasurementDTO) {
+		const { measure_uuid, confirmed_value } = confirmMeasurementDto;
+
+		const measurement = await this.prismaService.measurement.findUnique({
+			where: {
+				id: measure_uuid,
+			},
+		});
+
+		if (!measurement) {
+			throw new HttpException(
+				{
+					error_code: "MEASURE_NOT_FOUND",
+					error_description: `Measurement with id ${measure_uuid} not found`,
+				},
+				HttpStatus.NOT_FOUND,
+			);
+		}
+
+		if (measurement.has_confirmed) {
+			throw new HttpException(
+				{
+					error_code: "CONFIRMATION_DUPLICATE",
+					error_description: "Monthly measurement already confirmed",
+				},
+				HttpStatus.CONFLICT,
+			);
+		}
+
+		await this.prismaService.measurement.update({
+			where: {
+				id: measure_uuid,
+			},
+			data: {
+				has_confirmed: true,
+				measurement_value: confirmed_value,
+			},
+		});
+
+		return {
+			success: true,
+		};
 	}
 }
