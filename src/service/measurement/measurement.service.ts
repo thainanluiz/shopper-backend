@@ -1,10 +1,10 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Measurement, MeasurementType } from "@prisma/client";
 import { ConfirmMeasurementDTO } from "src/dto/measurement/confirm.dto";
 import { UploadMeasurementDTO } from "src/dto/measurement/upload.dto";
-import { FirebaseService } from "../firebase/firebase.service";
-import { PrismaService } from "../prisma/prisma.service";
+import { FirebaseService } from "src/service/firebase/firebase.service";
+import { PrismaService } from "src/service/prisma/prisma.service";
 
 @Injectable()
 export class MeasurementService {
@@ -17,6 +17,7 @@ export class MeasurementService {
 		this.generativeAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 	}
 
+	// Uploads a measurement, processes the image using AI and saves the data in the database
 	async uploadMeasurement(uploadMeasurementDto: UploadMeasurementDTO): Promise<{
 		image_url: string;
 		measure_value: number;
@@ -28,19 +29,21 @@ export class MeasurementService {
 		const current_date = new Date(measure_datetime);
 
 		try {
+			// Upload image to Firebase and generate a signed URL
 			const fileUrl = await this.firebaseService.uploadFile(
 				Buffer.from(image, "base64"),
 				`measurements/${customer_code}/${measure_type + current_date.toISOString()}.jpg`,
 			);
 
+			// Use Gemini AI model to read the meter value from the image
 			const model = this.generativeAI.getGenerativeModel({
 				model: "gemini-1.5-flash",
 			});
 
 			const geminiPrompt = `
-				Analise a imagem do medidor e retorne o valor medido. 
-				Se a leitura não for possível, retorne 'UNREADABLE_MEASUREMENT'.
-				Somente números válidos serão considerados.
+				Analyze the meter image and return the measured value. 
+				If reading is not possible, return 'UNREADABLE_MEASUREMENT'.
+				Only valid numbers are considered.
 			`;
 
 			const geminiImage = {
@@ -54,6 +57,7 @@ export class MeasurementService {
 
 			const responseText = result.response.text().trim();
 
+			// Handle unreadable measurements
 			if (
 				responseText.includes("UNREADABLE_MEASUREMENT") ||
 				!responseText.match(/\d+/)
@@ -69,6 +73,7 @@ export class MeasurementService {
 
 			const measureValue = Number.parseFloat(responseText.match(/\d+/)[0]);
 
+			// Check if the customer exists
 			const customer = await this.prismaService.customer.findUnique({
 				where: {
 					id: customer_code,
@@ -85,6 +90,7 @@ export class MeasurementService {
 				);
 			}
 
+			// Save the measurement data in the database
 			const measurement: Measurement =
 				await this.prismaService.measurement.create({
 					data: {
@@ -100,6 +106,7 @@ export class MeasurementService {
 					},
 				});
 
+			// Return the measurement details
 			return {
 				image_url: fileUrl[0],
 				measure_value: measureValue,
@@ -110,6 +117,7 @@ export class MeasurementService {
 				throw error;
 			}
 
+			// Handle potential duplicate report error
 			if (error.code === "P2002" && error.meta.modelName === "Measurement") {
 				throw new HttpException(
 					{
@@ -120,6 +128,7 @@ export class MeasurementService {
 				);
 			}
 
+			// Handle general errors
 			throw new HttpException(
 				{
 					error_code: "INTERNAL_SERVER_ERROR",
@@ -131,6 +140,7 @@ export class MeasurementService {
 		}
 	}
 
+	// Confirms the measurement with the given UUID
 	async confirmMeasurement(confirmMeasurementDto: ConfirmMeasurementDTO) {
 		const { measure_uuid, confirmed_value } = confirmMeasurementDto;
 
@@ -140,6 +150,7 @@ export class MeasurementService {
 			},
 		});
 
+		// Handle non-existent measurement
 		if (!measurement) {
 			throw new HttpException(
 				{
@@ -150,6 +161,7 @@ export class MeasurementService {
 			);
 		}
 
+		// Handle duplicate confirmation
 		if (measurement.has_confirmed) {
 			throw new HttpException(
 				{
@@ -160,6 +172,7 @@ export class MeasurementService {
 			);
 		}
 
+		// Update the measurement as confirmed
 		await this.prismaService.measurement.update({
 			where: {
 				id: measure_uuid,
@@ -175,7 +188,9 @@ export class MeasurementService {
 		};
 	}
 
+	// Lists all measurements for a customer, optionally filtering by type
 	async listMeasurements(customerCode: string, measureType?: string) {
+		// Validate customer existence
 		const customer = await this.prismaService.customer.findUnique({
 			where: {
 				id: customerCode,
@@ -192,6 +207,7 @@ export class MeasurementService {
 			);
 		}
 
+		// Validate measurement type if provided
 		if (measureType && !["GAS", "WATER"].includes(measureType)) {
 			throw new HttpException(
 				{
@@ -202,6 +218,7 @@ export class MeasurementService {
 			);
 		}
 
+		// Retrieve the measurements from the database
 		const measurements = await this.prismaService.measurement.findMany({
 			where: {
 				customer_id: customer.id,
@@ -219,6 +236,7 @@ export class MeasurementService {
 			},
 		});
 
+		// Return the list of measurements
 		return {
 			customer_code: customerCode,
 			measures: measurements.map((m) => ({
