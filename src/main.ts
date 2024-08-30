@@ -34,7 +34,7 @@ async function bootstrap() {
 
 	// Swagger documentation
 	const config = new DocumentBuilder()
-		.setTitle("Shopper API")
+		.setTitle("Shopper API Documentation")
 		.setDescription("API for managing measurements")
 		.setVersion("1.0")
 		.addTag("measurement")
