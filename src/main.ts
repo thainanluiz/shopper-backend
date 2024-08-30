@@ -1,5 +1,6 @@
 import { BadRequestException, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { json, urlencoded } from "express";
 import { AppModule } from "./app.module";
 
@@ -30,6 +31,22 @@ async function bootstrap() {
 			},
 		}),
 	);
+
+	// Swagger documentation
+	const config = new DocumentBuilder()
+		.setTitle("Shopper API")
+		.setDescription("API for managing measurements")
+		.setVersion("1.0")
+		.addTag("measurement")
+		.build();
+
+	// Create the Swagger document
+	const document = SwaggerModule.createDocument(app, config);
+
+	// Serve the Swagger document
+	SwaggerModule.setup("docs", app, document, {
+		jsonDocumentUrl: "/docs-json",
+	});
 
 	// Start the application on port 3000
 	await app.listen(process.env.PORT || 3000);
