@@ -9,8 +9,8 @@ services:
       - "3000:3000"
     environment:
       PORT: 3000
-      DATABASE_URL: "postgresql://postgres:IlHDCDdQAMbcLFAUqBMbaMsKoaoAryng@junction.proxy.rlwy.net:31347/railway"
-      GEMINI_API_KEY: "AIzaSyAE_sK4m-U1GZ1tTAzBeltcf-rUG1hDw3A"
+      DATABASE_URL: "postgresql://postgres:BVIPQhoeQUjotJqXoTMdttxJEgNdFMiw@junction.proxy.rlwy.net:53398/railway"
+      GEMINI_API_KEY: "AIzaSyCwTInzurkTIwrlkP77pSVbJg9zwvM-7_c"
     volumes:
       - .:/usr/src/app
     depends_on:
@@ -22,10 +22,10 @@ services:
     image: postgres:14
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: IlHDCDdQAMbcLFAUqBMbaMsKoaoAryng
+      POSTGRES_PASSWORD: BVIPQhoeQUjotJqXoTMdttxJEgNdFMiw
       POSTGRES_DB: railway
     ports:
-      - "5432:5432"
+      - "53398:53398"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
