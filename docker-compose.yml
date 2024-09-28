@@ -10,7 +10,7 @@ services:
     environment:
       PORT: 3000
       DATABASE_URL: "postgresql://postgres:BVIPQhoeQUjotJqXoTMdttxJEgNdFMiw@junction.proxy.rlwy.net:53398/railway"
-      GEMINI_API_KEY: "AIzaSyCwTInzurkTIwrlkP77pSVbJg9zwvM-7_c"
+      GEMINI_API_KEY: ""
     volumes:
       - .:/usr/src/app
     depends_on:
