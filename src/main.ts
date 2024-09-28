@@ -3,6 +3,8 @@ import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { json, urlencoded } from "express";
 import { AppModule } from "./app.module";
+import { join } from "node:path";
+import * as express from "express";
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
@@ -47,6 +49,12 @@ async function bootstrap() {
 	SwaggerModule.setup("docs", app, document, {
 		jsonDocumentUrl: "/docs-json",
 	});
+
+	// Serve static files from the uploads directory
+	app.use(
+		"/uploads",
+		express.static(join(__dirname, "..", "assets", "uploads")),
+	);
 
 	// Start the application on port 3000
 	await app.listen(process.env.PORT || 3000);

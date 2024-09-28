@@ -3,17 +3,15 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { Measurement, MeasurementType } from "@prisma/client";
 import { ConfirmMeasurementDTO } from "src/dto/measurement/confirm.dto";
 import { UploadMeasurementDTO } from "src/dto/measurement/upload.dto";
-import { FirebaseService } from "src/service/firebase/firebase.service";
 import { PrismaService } from "src/service/prisma/prisma.service";
+import { existsSync, mkdirSync, writeFile, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 @Injectable()
 export class MeasurementService {
 	private generativeAI: GoogleGenerativeAI;
 
-	constructor(
-		private prismaService: PrismaService,
-		private firebaseService: FirebaseService,
-	) {
+	constructor(private prismaService: PrismaService) {
 		this.generativeAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 	}
 
@@ -29,11 +27,25 @@ export class MeasurementService {
 		const current_date = new Date(measure_datetime);
 
 		try {
-			// Upload image to Firebase and generate a signed URL
-			const fileUrl = await this.firebaseService.uploadFile(
-				Buffer.from(image, "base64"),
-				`measurements/${customer_code}/${measure_type + current_date.toISOString()}.jpg`,
-			);
+			/* // Generate a unique filename for the image
+			const filename = `${customer_code}_${measure_type}_${current_date.toISOString()}.jpg`;
+			const uploadDir = join(__dirname, "..", "..", "..", "assets", "uploads");
+
+			// Ensure the directory exists, if not create it
+			if (!existsSync(uploadDir)) {
+				mkdirSync(uploadDir, { recursive: true });
+			}
+
+			// Construct the full file path
+			const filePath = join(uploadDir, filename);
+
+			// Save the image locally
+			const imageBuffer = Buffer.from(image, "base64");
+			await writeFileSync(filePath, imageBuffer);
+
+			// Retrieve the local file URL
+			const fileUrl = `http://localhost:3000/uploads/${filename}`; */
+			const fileUrl = "http://localhost:3000";
 
 			// Use Gemini AI model to read the meter value from the image
 			const model = this.generativeAI.getGenerativeModel({
@@ -102,17 +114,20 @@ export class MeasurementService {
 						measurement_datetime: current_date,
 						measurement_value: measureValue,
 						measurement_type: measure_type as MeasurementType,
-						image_link: fileUrl[0],
+						image_link: fileUrl,
 					},
 				});
 
+			console.log(fileUrl);
+
 			// Return the measurement details
 			return {
-				image_url: fileUrl[0],
+				image_url: fileUrl,
 				measure_value: measureValue,
 				measure_uuid: measurement.id,
 			};
 		} catch (error) {
+			console.log(error);
 			if (error instanceof HttpException) {
 				throw error;
 			}
