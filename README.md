@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-Este projeto de teste técnico é destinado ao gerenciamento de dados de medições de hidrômetros e gasômetros. Ele permite o upload e a validação de imagens das medições, integrando-se com Firebase para armazenamento de arquivos, Google Generative AI para análise de imagens e Prisma para gerenciamento de banco de dados.
+Este projeto de teste técnico é destinado ao gerenciamento de dados de medições de hidrômetros e gasômetros. Ele permite o upload e a validação de imagens das medições, integrando-se com Google Generative AI para análise de imagens e Prisma para gerenciamento de banco de dados.
 
 ## Funcionalidades
 
@@ -13,7 +13,6 @@ Este projeto de teste técnico é destinado ao gerenciamento de dados de mediç�
 ## Tecnologias Utilizadas
 
 - **NestJS**: Framework para desenvolvimento de aplicações server-side escaláveis.
-- **Firebase**: Armazenamento em nuvem para guardar imagens de medições.
 - **Google Generative AI**: Ferramenta para análise e extração de valores de medições a partir de imagens.
 - **Prisma**: ORM para gerenciamento e consulta de banco de dados PostgreSQL.
 - **Express**: Middleware para processamento de dados JSON e URL-encoded.
@@ -27,7 +26,6 @@ Este projeto de teste técnico é destinado ao gerenciamento de dados de mediç�
 
 - Node.js (testado com a versão v22.6.0)
 - PostgreSQL
-- Conta no Firebase com bucket de armazenamento (um bucket de teste está disponível, mas por favor, não modifique e nem visualize o arquivo de credenciais do Firebase incluído no repositório)
 - Chave de API do Google Generative AI
 
 ### Instalação
@@ -90,7 +88,7 @@ Este projeto de teste técnico é destinado ao gerenciamento de dados de mediç�
 
   ```json
   {
-    "image_url": "https://firebase.storage.url...",
+    "image_url": "...",
     "measure_value": 200,
     "measure_uuid": "cm..."
   }
@@ -137,7 +135,7 @@ Este projeto de teste técnico é destinado ao gerenciamento de dados de mediç�
         "measure_type": "WATER",
         "measure_value": 250,
         "has_confirmed": true,
-        "image_url": "https://firebase.storage.url..."
+        "image_url": "..."
       }
     ]
   }
